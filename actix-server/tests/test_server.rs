@@ -1,15 +1,10 @@
-use std::io::Read;
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 use std::sync::{mpsc, Arc};
 use std::{net, thread, time};
 
-use actix_codec::{BytesCodec, Framed};
-use actix_rt::net::TcpStream;
 use actix_server::Server;
 use actix_service::fn_service;
-use bytes::Bytes;
 use futures::future::{lazy, ok};
-use futures::SinkExt;
 use net2::TcpBuilder;
 
 fn unused_addr() -> net::SocketAddr {
@@ -41,7 +36,7 @@ fn test_bind() {
 
     thread::sleep(time::Duration::from_millis(500));
     assert!(net::TcpStream::connect(addr).is_ok());
-    let _ = sys.stop();
+    sys.stop();
     let _ = h.join();
 }
 
@@ -66,13 +61,19 @@ fn test_listen() {
 
     thread::sleep(time::Duration::from_millis(500));
     assert!(net::TcpStream::connect(addr).is_ok());
-    let _ = sys.stop();
+    sys.stop();
     let _ = h.join();
 }
 
 #[test]
 #[cfg(unix)]
 fn test_start() {
+    use actix_codec::{BytesCodec, Framed};
+    use actix_rt::net::TcpStream;
+    use bytes::Bytes;
+    use futures::SinkExt;
+    use std::io::Read;
+
     let addr = unused_addr();
     let (tx, rx) = mpsc::channel();
 
@@ -130,7 +131,7 @@ fn test_start() {
     assert!(net::TcpStream::connect(addr).is_err());
 
     thread::sleep(time::Duration::from_millis(100));
-    let _ = sys.stop();
+    sys.stop();
     let _ = h.join();
 }
 
@@ -178,6 +179,6 @@ fn test_configure() {
     assert!(net::TcpStream::connect(addr2).is_ok());
     assert!(net::TcpStream::connect(addr3).is_ok());
     assert_eq!(num.load(Relaxed), 1);
-    let _ = sys.stop();
+    sys.stop();
     let _ = h.join();
 }
