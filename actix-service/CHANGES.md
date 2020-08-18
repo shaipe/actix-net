@@ -1,5 +1,14 @@
 # Changes
 
+## Unreleased - 2020-xx-xx
+
+
+## 1.0.6 - 2020-08-09
+
+### Fixed
+
+* Removed unsound custom Cell implementation that allowed obtaining several mutable references to the same data, which is undefined behavior in Rust and could lead to violations of memory safety. External code could obtain several mutable references to the same data through service combinators. Attempts to acquire several mutable references to the same data will instead result in a panic.
+
 ## [1.0.5] - 2020-01-16
 
 ### Fixed

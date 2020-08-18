@@ -1,10 +1,24 @@
 # Changes
 
+## [0.3.3] - 2020-07-14
+
+### Changed
+
+* Update parking_lot to 0.11
+
+## [0.3.2] - 2020-05-20
+
+## Added
+
+* Implement `std::error::Error` for `BlockingError` [#120]
+
+[#120]: https://github.com/actix/actix-net/pull/120
+
 ## [0.3.1] - 2019-12-12
 
 ### Changed
 
-* Use parking_lot 0.10
+* Update parking_lot to 0.10
 
 ## [0.3.0] - 2019-12-02
 

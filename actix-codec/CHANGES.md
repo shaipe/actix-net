@@ -1,6 +1,13 @@
 # Changes
 
-* Use `.advance()` intead of `.split_to()`
+## Unreleased - 2020-xx-xx
+* Use `.advance()` instead of `.split_to()`.
+* Upgrade `tokio-util` to `0.3`.
+* Improve `BytesCodec` `.encode()` performance
+* Simplify `BytesCodec` `.decode()` 
+* Rename methods on `Framed` to better describe their use.
+* Add method on `Framed` to get a pinned reference to the underlying I/O.
+* Add method on `Framed` check emptiness of read buffer.
 
 ## [0.2.0] - 2019-12-10
 
@@ -8,7 +15,7 @@
 
 ## [0.2.0-alpha.4]
 
-* Fix buffer remaining capacity calcualtion
+* Fix buffer remaining capacity calculation
 
 ## [0.2.0-alpha.3]
 

@@ -10,7 +10,7 @@ use std::{fmt, time};
 
 use actix_rt::time::{delay_for, Delay};
 use actix_service::{IntoService, Service, Transform};
-use futures::future::{ok, Ready};
+use futures_util::future::{ok, Ready};
 
 /// Applies a timeout to requests.
 #[derive(Debug)]
@@ -58,10 +58,7 @@ impl<E: PartialEq> PartialEq for TimeoutError<E> {
                 TimeoutError::Service(e2) => e1 == e2,
                 TimeoutError::Timeout => false,
             },
-            TimeoutError::Timeout => match other {
-                TimeoutError::Service(_) => false,
-                TimeoutError::Timeout => true,
-            },
+            TimeoutError::Timeout => matches!(other, TimeoutError::Timeout),
         }
     }
 }
@@ -183,7 +180,7 @@ mod tests {
 
     use super::*;
     use actix_service::{apply, fn_factory, Service, ServiceFactory};
-    use futures::future::{ok, FutureExt, LocalBoxFuture};
+    use futures_util::future::{ok, FutureExt, LocalBoxFuture};
 
     struct SleepService(Duration);
 
@@ -223,7 +220,7 @@ mod tests {
     }
 
     #[actix_rt::test]
-    async fn test_timeout_newservice() {
+    async fn test_timeout_new_service() {
         let resolution = Duration::from_millis(100);
         let wait_time = Duration::from_millis(500);
 

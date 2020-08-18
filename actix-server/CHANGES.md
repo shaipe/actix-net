@@ -1,5 +1,27 @@
 # Changes
 
+## Unreleased
+
+### Changed
+
+* workers must be greater than 0
+
+## [1.0.3] - 2020-05-19
+
+### Changed
+
+* Replace deprecated `net2` crate with `socket2` [#140]
+
+[#140]: https://github.com/actix/actix-net/pull/140
+
+## [1.0.2] - 2020-02-26
+
+### Fixed
+
+* Avoid error by calling `reregister()` on Windows [#103]
+
+[#103]: https://github.com/actix/actix-net/pull/103
+
 ## [1.0.1] - 2019-12-29
 
 ### Changed

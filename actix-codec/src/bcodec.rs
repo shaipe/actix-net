@@ -1,4 +1,4 @@
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::{Buf, Bytes, BytesMut};
 use std::io;
 
 use super::{Decoder, Encoder};
@@ -9,13 +9,12 @@ use super::{Decoder, Encoder};
 #[derive(Debug, Copy, Clone)]
 pub struct BytesCodec;
 
-impl Encoder for BytesCodec {
-    type Item = Bytes;
+impl Encoder<Bytes> for BytesCodec {
     type Error = io::Error;
 
+    #[inline]
     fn encode(&mut self, item: Bytes, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        dst.reserve(item.len());
-        dst.put(item);
+        dst.extend_from_slice(item.bytes());
         Ok(())
     }
 }
@@ -28,8 +27,7 @@ impl Decoder for BytesCodec {
         if src.is_empty() {
             Ok(None)
         } else {
-            let len = src.len();
-            Ok(Some(src.split_to(len)))
+            Ok(Some(src.split()))
         }
     }
 }

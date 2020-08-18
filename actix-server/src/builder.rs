@@ -6,14 +6,13 @@ use std::{io, mem, net};
 use actix_rt::net::TcpStream;
 use actix_rt::time::{delay_until, Instant};
 use actix_rt::{spawn, System};
-use futures::channel::mpsc::{unbounded, UnboundedReceiver};
-use futures::channel::oneshot;
-use futures::future::ready;
-use futures::stream::FuturesUnordered;
-use futures::{ready, Future, FutureExt, Stream, StreamExt};
+use futures_channel::mpsc::{unbounded, UnboundedReceiver};
+use futures_channel::oneshot;
+use futures_util::future::ready;
+use futures_util::stream::FuturesUnordered;
+use futures_util::{future::Future, ready, stream::Stream, FutureExt, StreamExt};
 use log::{error, info};
-use net2::TcpBuilder;
-use num_cpus;
+use socket2::{Domain, Protocol, Socket, Type};
 
 use crate::accept::{AcceptLoop, AcceptNotify, Command};
 use crate::config::{ConfiguredService, ServiceConfig};
@@ -73,8 +72,9 @@ impl ServerBuilder {
     /// Set number of workers to start.
     ///
     /// By default server uses number of available logical cpu as workers
-    /// count.
+    /// count. Workers must be greater than 0.
     pub fn workers(mut self, num: usize) -> Self {
+        assert_ne!(num, 0, "workers must be greater than 0");
         self.threads = num;
         self
     }
@@ -277,7 +277,7 @@ impl ServerBuilder {
                 info!("Starting \"{}\" service on {}", sock.1, sock.2);
             }
             self.accept.start(
-                mem::replace(&mut self.sockets, Vec::new())
+                mem::take(&mut self.sockets)
                     .into_iter()
                     .map(|t| (t.0, t.2))
                     .collect(),
@@ -356,7 +356,7 @@ impl ServerBuilder {
 
                 // stop accept thread
                 self.accept.send(Command::Stop);
-                let notify = std::mem::replace(&mut self.notify, Vec::new());
+                let notify = std::mem::take(&mut self.notify);
 
                 // stop workers
                 if !self.workers.is_empty() && graceful {
@@ -382,7 +382,7 @@ impl ServerBuilder {
                                             .await;
                                             System::current().stop();
                                         }
-                                            .boxed(),
+                                        .boxed(),
                                     );
                                 }
                                 ready(())
@@ -488,11 +488,13 @@ pub(super) fn bind_addr<S: net::ToSocketAddrs>(
 }
 
 fn create_tcp_listener(addr: net::SocketAddr, backlog: i32) -> io::Result<net::TcpListener> {
-    let builder = match addr {
-        net::SocketAddr::V4(_) => TcpBuilder::new_v4()?,
-        net::SocketAddr::V6(_) => TcpBuilder::new_v6()?,
+    let domain = match addr {
+        net::SocketAddr::V4(_) => Domain::ipv4(),
+        net::SocketAddr::V6(_) => Domain::ipv6(),
     };
-    builder.reuse_address(true)?;
-    builder.bind(addr)?;
-    Ok(builder.listen(backlog)?)
+    let socket = Socket::new(domain, Type::stream(), Some(Protocol::tcp()))?;
+    socket.set_reuse_address(true)?;
+    socket.bind(&addr.into())?;
+    socket.listen(backlog)?;
+    Ok(socket.into_tcp_listener())
 }

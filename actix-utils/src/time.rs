@@ -1,15 +1,15 @@
+use std::cell::RefCell;
 use std::convert::Infallible;
+use std::rc::Rc;
 use std::task::{Context, Poll};
 use std::time::{self, Duration, Instant};
 
 use actix_rt::time::delay_for;
 use actix_service::{Service, ServiceFactory};
-use futures::future::{ok, ready, FutureExt, Ready};
-
-use super::cell::Cell;
+use futures_util::future::{ok, ready, FutureExt, Ready};
 
 #[derive(Clone, Debug)]
-pub struct LowResTime(Cell<Inner>);
+pub struct LowResTime(Rc<RefCell<Inner>>);
 
 #[derive(Debug)]
 struct Inner {
@@ -28,7 +28,7 @@ impl Inner {
 
 impl LowResTime {
     pub fn with(resolution: Duration) -> LowResTime {
-        LowResTime(Cell::new(Inner::new(resolution)))
+        LowResTime(Rc::new(RefCell::new(Inner::new(resolution))))
     }
 
     pub fn timer(&self) -> LowResTimeService {
@@ -38,7 +38,7 @@ impl LowResTime {
 
 impl Default for LowResTime {
     fn default() -> Self {
-        LowResTime(Cell::new(Inner::new(Duration::from_secs(1))))
+        LowResTime(Rc::new(RefCell::new(Inner::new(Duration::from_secs(1)))))
     }
 }
 
@@ -57,30 +57,30 @@ impl ServiceFactory for LowResTime {
 }
 
 #[derive(Clone, Debug)]
-pub struct LowResTimeService(Cell<Inner>);
+pub struct LowResTimeService(Rc<RefCell<Inner>>);
 
 impl LowResTimeService {
     pub fn with(resolution: Duration) -> LowResTimeService {
-        LowResTimeService(Cell::new(Inner::new(resolution)))
+        LowResTimeService(Rc::new(RefCell::new(Inner::new(resolution))))
     }
 
     /// Get current time. This function has to be called from
     /// future's poll method, otherwise it panics.
     pub fn now(&self) -> Instant {
-        let cur = self.0.get_ref().current;
+        let cur = self.0.borrow().current;
         if let Some(cur) = cur {
             cur
         } else {
             let now = Instant::now();
-            let mut inner = self.0.clone();
+            let inner = self.0.clone();
             let interval = {
-                let mut b = inner.get_mut();
+                let mut b = inner.borrow_mut();
                 b.current = Some(now);
                 b.resolution
             };
 
             actix_rt::spawn(delay_for(interval).then(move |_| {
-                inner.get_mut().current.take();
+                inner.borrow_mut().current.take();
                 ready(())
             }));
             now
@@ -104,7 +104,7 @@ impl Service for LowResTimeService {
 }
 
 #[derive(Clone, Debug)]
-pub struct SystemTime(Cell<SystemTimeInner>);
+pub struct SystemTime(Rc<RefCell<SystemTimeInner>>);
 
 #[derive(Debug)]
 struct SystemTimeInner {
@@ -122,30 +122,30 @@ impl SystemTimeInner {
 }
 
 #[derive(Clone, Debug)]
-pub struct SystemTimeService(Cell<SystemTimeInner>);
+pub struct SystemTimeService(Rc<RefCell<SystemTimeInner>>);
 
 impl SystemTimeService {
     pub fn with(resolution: Duration) -> SystemTimeService {
-        SystemTimeService(Cell::new(SystemTimeInner::new(resolution)))
+        SystemTimeService(Rc::new(RefCell::new(SystemTimeInner::new(resolution))))
     }
 
     /// Get current time. This function has to be called from
     /// future's poll method, otherwise it panics.
     pub fn now(&self) -> time::SystemTime {
-        let cur = self.0.get_ref().current;
+        let cur = self.0.borrow().current;
         if let Some(cur) = cur {
             cur
         } else {
             let now = time::SystemTime::now();
-            let mut inner = self.0.clone();
+            let inner = self.0.clone();
             let interval = {
-                let mut b = inner.get_mut();
+                let mut b = inner.borrow_mut();
                 b.current = Some(now);
                 b.resolution
             };
 
             actix_rt::spawn(delay_for(interval).then(move |_| {
-                inner.get_mut().current.take();
+                inner.borrow_mut().current.take();
                 ready(())
             }));
             now
@@ -173,7 +173,7 @@ mod tests {
     ///
     /// Expected Behavior: Two back-to-back calls of `LowResTimeService::now()` return the same value.
     #[actix_rt::test]
-    async fn lowres_time_service_time_does_not_immediately_change() {
+    async fn low_res_time_service_time_does_not_immediately_change() {
         let resolution = Duration::from_millis(50);
         let time_service = LowResTimeService::with(resolution);
         assert_eq!(time_service.now(), time_service.now());
@@ -210,7 +210,7 @@ mod tests {
     /// Expected Behavior: Two calls of `LowResTimeService::now()` made in subsequent resolution interval return different values
     /// and second value is greater than the first one at least by a resolution interval.
     #[actix_rt::test]
-    async fn lowres_time_service_time_updates_after_resolution_interval() {
+    async fn low_res_time_service_time_updates_after_resolution_interval() {
         let resolution = Duration::from_millis(100);
         let wait_time = Duration::from_millis(300);
         let time_service = LowResTimeService::with(resolution);

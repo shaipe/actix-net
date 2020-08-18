@@ -3,7 +3,7 @@ use std::future::Future;
 use std::io;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use futures::channel::mpsc::UnboundedSender;
+use futures_channel::mpsc::UnboundedSender;
 use tokio::task::LocalSet;
 
 use crate::arbiter::{Arbiter, SystemCommand};
@@ -79,8 +79,8 @@ impl System {
         })
     }
 
-    /// Set current running system.
-    pub(crate) fn is_set() -> bool {
+    /// Check if current system is set, i.e., as already been started.
+    pub fn is_set() -> bool {
         CURRENT.with(|cell| cell.borrow().is_some())
     }
 
